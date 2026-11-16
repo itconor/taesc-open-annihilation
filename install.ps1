@@ -1,13 +1,17 @@
 <#
 Installs TA: Escalation (TAESC) as an Open Annihilation mod, on Windows.
 
-It copies TAESC's own archives from a TAESC install you already have (or a
-TAESC .zip you downloaded), adds this repository's oamod.yaml, and puts the
-result in Open Annihilation's Mods folder. It never deletes anything: a mod
-already installed under the same name is renamed to a backup first.
+Put the TAESC download (TAESC_GOLD_10_2_0_FULL.rar from
+https://taesc.tauniverse.com) in the same folder as this script and run it.
+It unpacks TAESC's own archives, adds this repository's oamod.yaml, and puts
+the result in Open Annihilation's Mods folder. Without a download beside it,
+it looks for TAESC installed on this PC. It never deletes anything: a mod
+already installed under the same name is moved to a backup first.
 
-  .\install.ps1                        find TAESC on this PC and install it
-  .\install.ps1 -Source PATH           PATH is a TAESC folder or a TAESC .zip
+A .rar needs Windows 11's built-in tar, 7-Zip or WinRAR to unpack it.
+
+  .\install.ps1                        use the TAESC download beside this script
+  .\install.ps1 -Source PATH           PATH is a TAESC .rar/.zip/.7z or a TAESC folder
   .\install.ps1 -Package taesc.oamod   build a .oamod package instead of installing
   .\install.ps1 -ModsDir DIR           install into DIR instead of the usual Mods folder
 
@@ -41,26 +45,62 @@ function Find-Taesc([string]$root, [int]$depth = 6) {
     return $null
 }
 
+# Unpacks archive $src into folder $dst with whatever this PC has.
+function Expand-TaescArchive([string]$src, [string]$dst) {
+    New-Item -ItemType Directory -Path $dst -Force | Out-Null
+    if ($src -match '\.zip$') {
+        Expand-Archive -LiteralPath $src -DestinationPath $dst
+        return
+    }
+    $sevenZip = @("$env:ProgramFiles\7-Zip\7z.exe", "${env:ProgramFiles(x86)}\7-Zip\7z.exe") |
+        Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+    $unrar = @("$env:ProgramFiles\WinRAR\UnRAR.exe", "${env:ProgramFiles(x86)}\WinRAR\UnRAR.exe") |
+        Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+    $tar = Join-Path $env:SystemRoot "System32\tar.exe"
+    if ($sevenZip) {
+        & $sevenZip x -y "-o$dst" $src | Out-Null
+        if ($LASTEXITCODE -eq 0) { return }
+    }
+    if ($unrar -and $src -match '\.rar$') {
+        & $unrar x -idq -o+ $src "$dst\" | Out-Null
+        if ($LASTEXITCODE -eq 0) { return }
+    }
+    if (Test-Path $tar) {
+        & $tar -xf $src -C $dst 2>$null
+        if ($LASTEXITCODE -eq 0) { return }
+    }
+    Fail "cannot unpack $src. Install 7-Zip (https://www.7-zip.org), or unpack it yourself and run: .\install.ps1 -Source 'C:\path\to\unpacked\folder'"
+}
+
 # ------------------------------------------------------------------ find TAESC
 $TaescDir = $null
+if (-not $Source) {
+    $download = Get-ChildItem -Path $Here -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -match '(?i)taesc.*\.(rar|zip|7z)$' } |
+        Sort-Object Name | Select-Object -Last 1
+    if ($download) {
+        $Source = $download.FullName
+        Write-Host "Found the TAESC download: $($download.Name)"
+    }
+}
 if ($Source) {
     if (-not (Test-Path $Source)) { Fail "$Source does not exist" }
     if ((Get-Item $Source).PSIsContainer) {
         $TaescDir = Find-Taesc $Source
         if (-not $TaescDir) { Fail "no TAESC.gp3 under $Source; is this a TAESC install?" }
-    } elseif ($Source -match '\.zip$') {
-        $work = Join-Path ([IO.Path]::GetTempPath()) ("taesc-unpack-" + [guid]::NewGuid().ToString("N"))
-        Write-Host "Unpacking $Source into $work ..."
-        Expand-Archive -Path $Source -DestinationPath $work
-        $TaescDir = Find-Taesc $work
-        if (-not $TaescDir) { Fail "no TAESC.gp3 in $Source" }
-    } elseif ($Source -match '\.exe$') {
+    } elseif ($Source -match '(?i)\.exe$') {
         Fail "$Source is the TAESC installer. Run it first, then run this script again; it will find the installed copy."
+    } elseif ($Source -match '(?i)\.(rar|zip|7z)$') {
+        $work = Join-Path ([IO.Path]::GetTempPath()) ("taesc-unpack-" + [guid]::NewGuid().ToString("N"))
+        Write-Host "Unpacking it (about a minute) ..."
+        Expand-TaescArchive $Source $work
+        $TaescDir = Find-Taesc $work
+        if (-not $TaescDir) { Fail "no TAESC.gp3 in $Source; is it the TAESC download?" }
     } else {
-        Fail "$Source is not a folder or a .zip (unpack it first, then pass the folder)"
+        Fail "$Source is not a folder, .rar, .zip or .7z"
     }
 } else {
-    Write-Host "Looking for a TAESC install ..."
+    Write-Host "No TAESC download beside this script; looking for an installed TAESC ..."
     $roots = @(
         "C:\GOG Games", "D:\GOG Games",
         "C:\Program Files (x86)\GOG Galaxy\Games", "C:\Program Files (x86)\GOG.com",
@@ -72,7 +112,15 @@ if ($Source) {
         $TaescDir = Find-Taesc $r 3
         if ($TaescDir) { break }
     }
-    if (-not $TaescDir) { Fail "no TAESC install found. Install TAESC first (https://taesc.tauniverse.com), then run: .\install.ps1 -Source 'C:\path\to\TAESC'" }
+    if (-not $TaescDir) {
+        Write-Host ""
+        Write-Host "TAESC was not found."
+        Write-Host ""
+        Write-Host "  1. Download TAESC GOLD $TestedVersion (TAESC_GOLD_10_2_0_FULL.rar) from https://taesc.tauniverse.com"
+        Write-Host "  2. Put the file in this folder: $Here"
+        Write-Host "  3. Run this script again."
+        exit 1
+    }
 }
 Write-Host "TAESC found in: $TaescDir"
 

@@ -17,41 +17,51 @@ It holds no TAESC or Total Annihilation files.
 - **Total Annihilation** with **Core Contingency** and **Battle Tactics**
   (the GOG or Steam release has all three), set up in Open Annihilation.
 - **Open Annihilation 0.9.1** or later.
-- **TAESC GOLD 10.2.0**, installed from [taesc.tauniverse.com](https://taesc.tauniverse.com).
-  The scripts can't download it for you: the site checks for bots, and TAESC's
-  files are the TAESC team's to distribute. Install it the usual way first, on
-  Windows or in CrossOver, Wine, Bottles or Lutris.
+- **TAESC GOLD 10.2.0**: the download, `TAESC_GOLD_10_2_0_FULL.rar`, from
+  [taesc.tauniverse.com](https://taesc.tauniverse.com). You download it
+  yourself: the site checks for bots, and TAESC's files are the TAESC team's
+  to distribute, so this repository doesn't host them.
 
 ## Install
+
+1. Download this repository (**Code → Download ZIP**, or `git clone`).
+2. Put `TAESC_GOLD_10_2_0_FULL.rar` in the same folder as `install.sh`.
+3. Run the script.
 
 macOS or Linux:
 
 ```bash
-git clone https://github.com/itconor/taesc-open-annihilation.git
-cd taesc-open-annihilation
 ./install.sh
 ```
 
 Windows (PowerShell):
 
 ```powershell
-git clone https://github.com/itconor/taesc-open-annihilation.git
-cd taesc-open-annihilation
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
-The script finds TAESC (CrossOver bottles, `~/.wine`, Bottles, Lutris,
-`~/Games`, `C:\GOG Games` and the usual Windows folders), copies its archives,
-`TAESC.ini`, megamap icons and music next to the profile, checks the profile with
-Open Annihilation when it finds the game, and installs the mod in
+The script says it found the TAESC download, unpacks it, copies TAESC's
+archives, `TAESC.ini`, megamap icons and music next to the profile, checks the
+profile with Open Annihilation when it finds the game, and installs the mod in
 `Documents/Open Annihilation/Mods/taesc`. A copy already there is moved to
 `Documents/Open Annihilation/Mod backups/taesc-<date>`, never deleted.
+
+With no download beside it, the script looks for TAESC already installed
+(CrossOver bottles, `~/.wine`, Bottles, Lutris, `~/Games`, `C:\GOG Games` and the
+usual Windows folders). If it finds neither, it says where to download TAESC
+and where to put the file.
+
+Unpacking the `.rar`:
+
+- **macOS:** works out of the box (the system `bsdtar` reads it).
+- **Linux:** needs `bsdtar` (`libarchive-tools` / `bsdtar`), `unrar` or `7z`.
+- **Windows:** needs Windows 11's built-in `tar`, 7-Zip or WinRAR.
 
 Options:
 
 | macOS / Linux | Windows | What it does |
 | --- | --- | --- |
-| `--source PATH` | `-Source PATH` | Use the TAESC folder, or TAESC `.zip`, at `PATH` instead of searching |
+| `--source PATH` | `-Source PATH` | Use the TAESC `.rar`/`.zip`/`.7z`, or a TAESC folder, at `PATH` |
 | `--package FILE` | `-Package FILE` | Build a `.oamod` file instead; open it with Open Annihilation to install it |
 | `--mods-dir DIR` | `-ModsDir DIR` | Install into `DIR` instead of the usual Mods folder |
 
@@ -95,8 +105,9 @@ an issue or a pull request.
 
 ## Tested
 
-- **macOS:** `install.sh` against a CrossOver install of TAESC 10.2.0, and
-  against a `.zip` of it, with Open Annihilation 0.9.1. The profile resolves,
+- **macOS:** `install.sh` with `TAESC_GOLD_10_2_0_FULL.rar` beside it, against
+  a CrossOver install of TAESC 10.2.0, and against a `.zip`, with Open
+  Annihilation 0.9.1. The profile resolves,
   the main menu shows TAESC's art, and a skirmish starts with all 549 TAESC
   unit types and their weapons.
 - **`--package`:** builds the `.oamod` file, but installing it through Open

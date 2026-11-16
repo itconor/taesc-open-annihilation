@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
 # Installs TA: Escalation (TAESC) as an Open Annihilation mod, on macOS and Linux.
 #
-# It copies TAESC's own archives from a TAESC install you already have (or a
-# TAESC .zip you downloaded), adds this repository's oamod.yaml, and puts the
-# result in Open Annihilation's Mods folder. It never deletes anything: a mod
-# already installed under the same name is renamed to a backup first.
+# Put the TAESC download (TAESC_GOLD_10_2_0_FULL.rar from
+# https://taesc.tauniverse.com) in the same folder as this script and run it.
+# It unpacks TAESC's own archives, adds this repository's oamod.yaml, and puts
+# the result in Open Annihilation's Mods folder. Without a download beside it,
+# it looks for TAESC installed in CrossOver, Wine, Bottles or Lutris. It never
+# deletes anything: a mod already installed under the same name is moved to a
+# backup first.
 #
-#   ./install.sh                       find TAESC on this machine and install it
-#   ./install.sh --source PATH         PATH is a TAESC folder or a TAESC .zip/.7z
+#   ./install.sh                       use the TAESC download beside this script
+#   ./install.sh --source PATH         PATH is a TAESC .rar/.zip/.7z or a TAESC folder
 #   ./install.sh --package taesc.oamod build a .oamod package instead of installing
 #   ./install.sh --mods-dir DIR        install into DIR instead of the usual Mods folder
 #   ./install.sh --help
@@ -26,7 +29,7 @@ say()  { printf '%s\n' "$*"; }
 warn() { printf 'warning: %s\n' "$*" >&2; }
 die()  { printf 'error: %s\n' "$*" >&2; exit 1; }
 
-usage() { sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0; }
+usage() { sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 0; }
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -81,40 +84,70 @@ find_taesc_in() {
   find "$1" -maxdepth 7 -type f -iname 'taesc.gp3' 2>/dev/null | head -n 1 | while read -r f; do dirname "$f"; done
 }
 
+# Unpacks archive $1 into folder $2 with whatever tool this machine has.
+unpack() {
+  local src="$1" dst="$2" lower
+  lower="$(printf '%s' "$src" | tr '[:upper:]' '[:lower:]')"
+  case "$lower" in
+    *.zip)
+      if command -v unzip >/dev/null 2>&1 && unzip -q "$src" -d "$dst"; then return 0; fi ;;
+    *.rar)
+      if command -v unrar >/dev/null 2>&1 && unrar x -idq -o+ "$src" "$dst/" >/dev/null; then return 0; fi ;;
+  esac
+  if command -v bsdtar >/dev/null 2>&1 && bsdtar -xf "$src" -C "$dst" 2>/dev/null; then return 0; fi
+  if command -v 7zz >/dev/null 2>&1 && 7zz x -y -o"$dst" "$src" >/dev/null; then return 0; fi
+  if command -v 7z  >/dev/null 2>&1 && 7z  x -y -o"$dst" "$src" >/dev/null; then return 0; fi
+  case "$lower" in
+    *.rar) die "cannot unpack $src: this machine has no tool that reads RAR files. Install one (macOS: brew install libarchive; Debian/Ubuntu: sudo apt install libarchive-tools; Fedora: sudo dnf install bsdtar) or unpack it yourself and run: $0 --source /path/to/unpacked/folder" ;;
+    *) die "cannot unpack $src" ;;
+  esac
+}
+
+# A TAESC download (.rar, .zip or .7z with "taesc" in its name) in this
+# script's folder, the newest by name, or nothing.
+archive_beside_script() {
+  find "$HERE" -maxdepth 1 -type f \( -iname '*taesc*.rar' -o -iname '*taesc*.zip' -o -iname '*taesc*.7z' \) 2>/dev/null | sort | tail -n 1
+}
+
 # ---------------------------------------------------------------- find TAESC
 TAESC_DIR=""
+if [ -z "$SOURCE" ]; then
+  SOURCE="$(archive_beside_script)"
+  [ -n "$SOURCE" ] && say "Found the TAESC download: $(basename "$SOURCE")"
+fi
 if [ -n "$SOURCE" ]; then
   [ -e "$SOURCE" ] || die "$SOURCE does not exist"
   if [ -d "$SOURCE" ]; then
     TAESC_DIR="$(find_taesc_in "$SOURCE")"
     [ -n "$TAESC_DIR" ] || die "no TAESC.gp3 under $SOURCE; is this a TAESC install?"
   else
-    WORK="$(mktemp -d "${TMPDIR:-/tmp}/taesc-unpack.XXXXXX")"
-    say "Unpacking $SOURCE into $WORK ..."
     case "$(printf '%s' "$SOURCE" | tr '[:upper:]' '[:lower:]')" in
-      *.zip)
-        if command -v unzip >/dev/null 2>&1; then unzip -q "$SOURCE" -d "$WORK"
-        else bsdtar -xf "$SOURCE" -C "$WORK"; fi ;;
-      *.7z)
-        if command -v 7z >/dev/null 2>&1; then 7z x -y -o"$WORK" "$SOURCE" >/dev/null
-        elif command -v 7zz >/dev/null 2>&1; then 7zz x -y -o"$WORK" "$SOURCE" >/dev/null
-        else bsdtar -xf "$SOURCE" -C "$WORK"; fi ;;
-      *.exe)
-        die "$SOURCE is a Windows installer. Run it (on Windows, or in CrossOver/Wine), then run this script again; it will find the installed copy." ;;
-      *) bsdtar -xf "$SOURCE" -C "$WORK" || die "cannot unpack $SOURCE" ;;
+      *.exe) die "$SOURCE is a Windows installer. Run it (on Windows, or in CrossOver/Wine), then run this script again; it will find the installed copy." ;;
     esac
+    WORK="$(mktemp -d "${TMPDIR:-/tmp}/taesc-unpack.XXXXXX")"
+    say "Unpacking it (about a minute) ..."
+    unpack "$SOURCE" "$WORK"
     TAESC_DIR="$(find_taesc_in "$WORK")"
-    [ -n "$TAESC_DIR" ] || die "no TAESC.gp3 in $SOURCE"
+    [ -n "$TAESC_DIR" ] || die "no TAESC.gp3 in $SOURCE; is it the TAESC download?"
   fi
 else
-  say "Looking for a TAESC install ..."
+  say "No TAESC download beside this script; looking for an installed TAESC ..."
   while read -r root; do
+    [ -n "$root" ] || continue
     TAESC_DIR="$(find_taesc_in "$root")"
     [ -n "$TAESC_DIR" ] && break
   done <<EOF
 $(search_roots)
 EOF
-  [ -n "$TAESC_DIR" ] || die "no TAESC install found. Install TAESC first (https://taesc.tauniverse.com), then run: $0 --source /path/to/TAESC"
+  if [ -z "$TAESC_DIR" ]; then
+    say ""
+    say "TAESC was not found."
+    say ""
+    say "  1. Download TAESC GOLD $TESTED_VERSION (TAESC_GOLD_10_2_0_FULL.rar) from https://taesc.tauniverse.com"
+    say "  2. Put the file in this folder: $HERE"
+    say "  3. Run this script again."
+    exit 1
+  fi
 fi
 say "TAESC found in: $TAESC_DIR"
 
