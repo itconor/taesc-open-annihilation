@@ -1,0 +1,138 @@
+# Total Annihilation: Escalation (TAESC) GOLD 10.2.0 for Open Annihilation.
+#
+# Unofficial. Made by reading a TAESC 10.2.0 install: TotalA.exe's own strings
+# (archive and folder names, INI, registry key), the unit, weapon and script
+# data in its archives, taesc.dll's start-up log, the demo recorder
+# (eplayx.dll) and the release notes (GOLD_10_2_0.txt). Every hack turned on
+# below is one those sources show TAESC has. The hacks listed at the bottom,
+# commented out, are exe-level changes TAESC may or may not carry: try them in
+# Open Annihilation's Developer Mode before turning them on here.
+#
+# This file holds no TAESC or Total Annihilation content. install.sh and
+# install.ps1 copy TAESC's archives from your own TAESC install next to it.
+oamod: 1
+id: taesc
+name: "TA: Escalation"
+version: "10.2.0"
+description: "Total Annihilation: Escalation GOLD 10.2.0, the T1-T5 Arm and Core expansion mod."
+tags: [total-conversion, escalation]
+supportedGames: [totala]
+requiredExpansions: [core-contingency, battle-tactics]
+author: {name: TA Escalation team}
+packaging: {revision: 1, date: 2026-11-16, packager: itconor}
+
+identity:
+  settings-file: TAESC.ini              # TotalA.exe: "%s\taesc.ini"
+  registry-root: 'Software\TA Esc'      # TotalA.exe: "Software\TA Esc"
+
+layout:
+  revision-archive: TAESC.gp3           # TotalA.exe: "TAE%s.GP3"; rev31.gp3 is not mounted
+  directories:
+    units: unitsE
+    weapons: weaponE
+    gamedata: gamedatE
+    ai: aE
+    guis: guiE
+    unitpics: unitpicE
+    download: downloadsE
+  map-units-section: unitsE             # TAESC's maps place units under [unitsE]
+  cd-check: false
+
+limits:
+  units-per-player: {default: 1000, max: 1500, limits-screen-fallback: 1000}
+  unit-types: true                      # 549 unit types, past 3.1c's 512
+  category-mask-types: 1024             # or types 512+ fall out of every category
+  effects: true                         # SfxLimit 20480
+  path-search-budget: true              # AISearchMapEntries 66650
+  model-composite: true                 # X/Y_CompositeBuf 1280
+  build-list-entries: {overflow: dynamic}   # [CANBUILD] lists run to 107 entries
+
+script-extensions:
+  fidelity: exact
+  get: [unit.kills-x100, unit.min-id, unit.max-id, unit.my-id]   # 32, 69, 70, 71
+
+data-keys:
+  unit:
+    VeterancyThresholds: veterancy.thresholds
+    VeterancyAccuracyBuffRate: veterancy.accuracy-rate
+    PreviewPieces: ui.preview-pieces
+    PreviewFaceOpponent: ui.preview-face-opponent
+  weapon:
+    nottoair: weapons.not-to-air
+    surfacefire: weapons.surface-fire
+    nottounderwater: weapons.not-to-underwater
+    nomapweaponalert: weapons.no-map-alert
+
+hacks:
+  # Gameplay (release notes, DLL updates)
+  veterancy.model: true                 # 10.0.0 per-unit veterancy thresholds
+  repair.rate: true                     # 10.2.0 repair-rate exploit fix
+  sharing.structure-gift-rate-limit: true   # 10.2.0 share-abuse guard
+  units.id-reuse-delay: true            # "holding back recycling of unit IDs for 5 seconds"
+  units.placement-by-builder: true      # "mobile-units-can-build-mobile-units hack"
+  units.mobile-unit-yardmap: true       # mobile factories (Nomad, Harbinger) carry yardmaps
+  ai.squad5-factory-tick: true          # "AI to build/stockpile and fire nukes"
+  orders.build-site-kickout: true       # TA Hook's yellow kickout footprint
+  orders.con-patrol-guard-options: true # hold position: reclaim only
+  economy.stats-exclude-shared-income: true
+  intel.allied-jammers-ignored: true    # "jammers no longer jam your own radar"
+  setup.map-scripted-units: true        # neutral / per-player spawn units on maps
+  setup.team-start-positions: true
+  teams.team-number-alliances: true     # battle-room team icons, +autoteam
+  console.lostype-cheat-group: true     # "+lostype as a cheatcode"
+
+  # Network and recorder (TA Demo Recorder in eplayx.dll)
+  recorder.ta-demo-recorder: true
+  recorder.ten-player-replay: true
+  network.vercheck: true
+  network.vote-reject: true             # 10.2.0 vote-to-reject
+  network.commander-start-sync: true    # "ghost com" fix
+  network.recorder-session-commands: true   # .autopause .voteready .forcego .randmap
+  console.game-speed-range: true        # .syncon
+  setup.commander-warp: true            # .cmdwarp
+  setup.recorder-prebuilt-base: true    # .base / .dobase
+  sharing.recorder-take-give: true      # .give / .take / .takecmd
+
+  # Interface (taesc.dll, TAESC.ini)
+  ui.megamap: true
+  ui.whiteboard: true
+  ui.resource-panel: true
+  ui.camera-sharing: true               # .sharemappos / .lockon
+  ui.build-preview: true                # nanoframe build previews
+  ui.build-tools: true                  # line/ring build, drag queued orders
+  ui.click-snap: true                   # WreckSnap on, MexSnap capped at 0
+  ui.selection-shortcuts: true          # double-click, Ctrl-S/B/F
+  ui.options-dialog: true               # Ctrl-F2, F11 chat macro
+  ui.share-dialog-and-lobby-buttons: true
+  ui.display-modes: true                # DisplayModeMinHeight768
+  ui.text-rendering: true               # UnicodeSupport
+  ui.audio: true                        # 3D sound, MP3 music, Mission Complete sound
+  ui.veterancy-label: true
+
+  # Not confirmed for TAESC 10.2.0. Try them in Developer Mode before writing
+  # them in:
+  #   orders.weapons-free-while-busy, orders.selective-weapon-occupy,
+  #   orders.reclaim-command-any-unit, orders.resurrector-reclaims-features,
+  #   orders.repairing-state-target-activity,
+  #   weapons.retarget-out-of-range, weapons.high-arc-ballistic,
+  #   weapons.timed-shell-detonation, weapons.vlaunch-before-turret,
+  #   air.guard-respects-hold-position, air.gunships-hover-to-strafe,
+  #   air.no-repair-retreat-flag, repair.healtime-self-heal,
+  #   units.water-state-rules, units.skip-empty-yardmap,
+  #   units.ignore-null-death-record, units.init-cloaked-after-build,
+  #   ai.* (other than squad5-factory-tick), economy.deterministic-wind,
+  #   network.lag-guard, intel.allied-los-sharing (TAESC uses .sharelos)
+
+settings:
+  limits.units-per-player.limits-screen-fallback: {ini: Preferences/UnitLimit}
+  limits.unit-types.bitset-bits: {ini: Preferences/UnitType}
+  limits.effects.queue: {ini: Preferences/SfxLimit}
+  limits.path-search-budget: {ini: Preferences/AISearchMapEntries}
+  registry-seeds:
+    UnitLimit: 1000
+    "Sound Mode": 2
+    MixingBuffers: 128
+    GameSpeed: 10
+    SwitchAlt: 1
+    NumSkirmishPlayers: 10
+    ScreenChat: 1
